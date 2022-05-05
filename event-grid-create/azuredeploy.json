@@ -1,0 +1,73 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "eventGridSystemTopicName": {
+            "defaultValue": "[concat(replace(resourceGroup().name, 'rg', ''), substring(newGuid(), 0, 7), 'egst')]",
+            "type": "String"
+        },
+        "eventSubscriptionName": {
+            "defaultValue": "[concat(replace(resourceGroup().name, 'rg', ''), substring(newGuid(), 0, 7), 'es')]",
+            "type": "String"
+        },
+        "subscriptionId": {
+            "type": "string",
+            "defaultValue": "[subscription().subscriptionId]"
+        },
+        "storageAccountsQueueName": {
+            "type": "String"
+        },
+        "storageAccountsExternalId": {
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.EventGrid/systemTopics",
+            "apiVersion": "2020-04-01-preview",
+            "name": "[parameters('eventGridSystemTopicName')]",
+            "location": "global",
+            "properties": {
+                "source": "[concat('/subscriptions/', parameters('subscriptionId'))]",
+                "topicType": "Microsoft.Resources.Subscriptions"
+            }
+        },
+        {
+            "type": "Microsoft.EventGrid/systemTopics/eventSubscriptions",
+            "apiVersion": "2020-04-01-preview",
+            "name": "[concat(parameters('eventGridSystemTopicName'), '/', parameters('eventSubscriptionName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.EventGrid/systemTopics', parameters('eventGridSystemTopicName'))]"
+            ],
+            "properties": {
+                "destination": {
+                    "properties": {
+                        "resourceId": "[parameters('storageAccountsExternalId')]",
+                        "queueName": "[parameters('storageAccountsQueueName')]"
+                    },
+                    "endpointType": "StorageQueue"
+                },
+                "filter": {
+                    "includedEventTypes": [
+                        "Microsoft.Resources.ResourceWriteSuccess",
+                        "Microsoft.Resources.ResourceWriteFailure",
+                        "Microsoft.Resources.ResourceWriteCancel",
+                        "Microsoft.Resources.ResourceDeleteSuccess",
+                        "Microsoft.Resources.ResourceDeleteFailure",
+                        "Microsoft.Resources.ResourceDeleteCancel",
+                        "Microsoft.Resources.ResourceActionSuccess",
+                        "Microsoft.Resources.ResourceActionFailure",
+                        "Microsoft.Resources.ResourceActionCancel"
+                    ]
+                },
+                "labels": [],
+                "eventDeliverySchema": "EventGridSchema",
+                "retryPolicy": {
+                    "maxDeliveryAttempts": 30,
+                    "eventTimeToLiveInMinutes": 1440
+                }
+            }
+        }
+    ]
+}

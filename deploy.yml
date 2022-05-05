@@ -1,0 +1,77 @@
+trigger:
+- main
+
+variables:
+  RATE: "1"
+  DEPARTMENT: ""
+  CONTACT: ""
+  APPLICATION: ""
+  PROJECT_CODE: ""
+  PROJECT_MANAGER: ""
+  BUSINESS_UNIT: ""
+  AZURE_SUBSCRIPTION: ""
+
+jobs:
+- job: Python
+  displayName: Validate and Run Python
+  pool: 
+    vmImage: ubuntu-latest
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.8'
+    displayName: 'Use Python 3.8'
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install flake8 pytest pytest-azurepipelines
+      pip install -r requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      flake8 ./policy-create --count --select=E9,F63,F7,F82 --show-source --statistics
+      flake8 ./policy-create --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    displayName: 'Lint with flake8'
+
+  - script: |
+      # pytest
+    displayName: 'pytest'
+
+  - script: |
+      python ./policy-create/main.py
+    displayName: 'Run Python'
+    env:
+      RATE: $(RATE)
+      DEPARTMENT: $(DEPARTMENT)
+      CONTACT: $(CONTACT)
+      APPLICATION: $(APPLICATION)
+      PROJECT_CODE: $(PROJECT_CODE)
+      PROJECT_MANAGER: $(PROJECT_MANAGER)
+      BUSINESS_UNIT: $(BUSINESS_UNIT)
+      AZURE_SUBSCRIPTION: $(AZURE_SUBSCRIPTION)
+      AZBILL_STORAGE_ACCOUNT_CONNECTION_STRING: $(AZBILL_STORAGE_ACCOUNT_CONNECTION_STRING)
+      AZUREPOLICY_LOGICAPP_URL: $(AZUREPOLICY_LOGICAPP_URL)
+      DEVOPS_CLIENT_ID: $(DEVOPS_CLIENT_ID)
+      DEVOPS_CLIENT_SECRET: $(DEVOPS_CLIENT_SECRET)
+      TENANT_ID: $(TENANT_ID)
+
+- job: ARM
+  dependsOn: Python
+  condition: succeeded('Python')
+  displayName: Deploy ARM
+  pool: 
+    vmImage: ubuntu-latest
+  steps:
+  - task: AzureResourceManagerTemplateDeployment@3
+    inputs:
+      deploymentScope: 'Resource Group'
+      azureResourceManagerConnection: 'PRD'
+      subscriptionId: '$(AZURE_SUBSCRIPTION)'
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: 'azuremonitoreventrg'
+      location: 'Australia East'
+      templateLocation: 'Linked artifact'
+      deploymentMode: 'Incremental'
+      csmFile: 'event-grid-create/azuredeploy.json'
+      csmParametersFile: 'event-grid-create/azuredeploy.parameters.json'
+      deploymentName: 'arm-deployment-event-grid-create'

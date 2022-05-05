@@ -1,0 +1,87 @@
+name: Azure Onboard
+on: [push]
+
+env:
+  RATE: "1"
+  DEPARTMENT: ""
+  CONTACT: ""
+  APPLICATION: ""
+  PROJECT_CODE: ""
+  PROJECT_MANAGER: ""
+  BUSINESS_UNIT: ""
+  AZURE_SUBSCRIPTION: ""
+
+jobs:
+  validate-and-run:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout GitHub Action
+      uses: actions/checkout@v2
+
+    - name: Setup Python Environment
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.8"
+        architecture: "x64"
+
+    - name: Install requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        pip install -r requirements.txt
+
+    - name: Lint with flake8
+      run: |
+        flake8 ./policy-create --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 ./policy-create --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run Python
+      run: python ./policy-create/main.py
+      env:
+        RATE: ${{ env.RATE }}
+        DEPARTMENT: ${{ env.DEPARTMENT }}
+        CONTACT: ${{ env.CONTACT }}
+        APPLICATION: ${{ env.APPLICATION }}
+        PROJECT_CODE: ${{ env.PROJECT_CODE }}
+        PROJECT_MANAGER: ${{ env.PROJECT_MANAGER }}
+        BUSINESS_UNIT: ${{ env.BUSINESS_UNIT }}
+        AZURE_SUBSCRIPTION: ${{ env.AZURE_SUBSCRIPTION }}
+        AZBILL_STORAGE_ACCOUNT_CONNECTION_STRING: ${{ secrets.AZBILL_STORAGE_ACCOUNT_CONNECTION_STRING }}
+        AZUREPOLICY_LOGICAPP_URL: ${{ secrets.AZUREPOLICY_LOGICAPP_URL }}
+        DEVOPS_CLIENT_ID: ${{ secrets.DEVOPS_CLIENT_ID }}
+        DEVOPS_CLIENT_SECRET: ${{ secrets.DEVOPS_CLIENT_SECRET }}
+        TENANT_ID: ${{ secrets.TENANT_ID }}
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout GitHub Action
+      uses: actions/checkout@main
+
+    - name: Run Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        allow-no-subscriptions: true
+
+    - name: Run ARM Deploy
+      uses: azure/arm-deploy@v1
+      with:
+        scope: subscription
+        subscriptionId: ${{ env.AZURE_SUBSCRIPTION }}
+        region: "australiaeast"
+        template: ./resource-group-create/azuredeploy.json
+        parameters:
+          rgName="azuremonitoreventrg"
+          rgLocation="australiaeast"
+
+    - name: Run ARM Deploy
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ env.AZURE_SUBSCRIPTION }}
+        resourceGroupName: "azuremonitoreventrg"
+        template: ./event-grid-create/azuredeploy.json
+        parameters: ./event-grid-create/azuredeploy.parameters.json
+
+    - run: echo ${{ steps.deploy.outputs.containerName }}
