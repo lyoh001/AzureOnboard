@@ -1,33 +1,35 @@
 # VICGOV - Azure Policy as Code Workflow
+
+## Table of Contents
+1. [Introduction](#1-introduction)
+   1. [Overview](#11-overview)
+2. [Logical Architecture](#2-logical-architecture)
+   1. [Logical System Component Overview](#21-logical-system-component-overview)
+3. [Management Group Structure](#3-management-group-structure)
+   1. [Management Group Structure Overview](#31-management-group-structure-overview)
+4. [Tagging](#4-tagging)
+
 ## 1. Introduction
-### 1.1	Overview
+### 1.1 Overview
 
-As a result of outstanding Azure charges, Hosting Platform Services has been working with numerous Customer Account, Managers, Finance and Business technology teams to resolve a number of issues which have presented and have resulted in outstanding invoices under dispute with customers.
+The VICGOV - Azure Policy as Code Workflow was developed to address outstanding Azure charges and improve the onboarding process for new subscriptions. This document provides a high-level overview of the workflow, including policies for tags, updating customer billing reference tables, and configuring Azure monitoring. It also includes a detailed troubleshooting guide.
 
-This document is intended to provide a high level overview of workflow how the new subscription onboarding process works including
-- policy for tags.
-- updating customer billing reference table.
-- configuring azure monitoring.
-
-
-Included in this report is a step by step detailed guide around where to look for troubleshooting.
-
-
-
-## 2 Logical Architecture
-### 2.1	Logical System Component Overview
+## 2. Logical Architecture
+### 2.1 Logical System Component Overview
 ![Figure 1: Logical Architecture Overview](./.images/workflow.png)
-1. A new subscription gets created.
-2. The subscription needs to be moved to "Build" management group.
-3. The engineer will trigger the Azure Devops pipeline.
-4. The CICD pipeline will push out the policies to the target subscription.
-5. The CICD pipeline will update the customer reference table and notify CTX finance team via email.
-6. The CICD pipeline will will provision eventgrid and intergrate with monitoring solution.
 
+The logical architecture of the VICGOV - Azure Policy as Code Workflow is as follows:
 
+1. A new subscription is created.
+2. The subscription is moved to the "Build" management group.
+3. An engineer triggers the Azure DevOps pipeline.
+4. The CI/CD pipeline pushes out the policies to the target subscription.
+5. The CI/CD pipeline updates the customer reference table and notifies the CTX finance team via email.
+6. The CI/CD pipeline provisions Event Grid and integrates it with the monitoring solution.
 
-## 3 Management Group Structure
-### 3.1	Management Group Structure Overview
+## 3. Management Group Structure
+### 3.1 Management Group Structure Overview
+The management group structure is represented using the following diagram:
 ``` mermaid
 graph TD;
 A[VicGovRoot] --> B(Cenitex_Managed);
@@ -48,8 +50,6 @@ A[VicGovRoot] --> B(Cenitex_Managed);
     P --> R(Subscription B);
     A --> Q(Build);
 ```
-
-
 
 ## 4 Tagging
 The following section lists tags required at a subscription level.  Alternatively, a custom policy can be used to automatically tags all resource groups with these tags. 
